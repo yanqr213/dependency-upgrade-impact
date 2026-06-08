@@ -356,7 +356,8 @@ class ReporterAndCliTests(TempProject):
         after.mkdir()
         (before / "requirements.txt").write_text("requests==2.30.0\n", encoding="utf-8")
         (after / "requirements.txt").write_text("requests==3.0.0\n", encoding="utf-8")
-        return analyze(str(before), str(after), fail_on="none")
+        self.write("src/app.py", "import requests\n")
+        return analyze(str(before), str(after), source_root=str(self.root / "src"), fail_on="none")
 
     def test_json_report_valid(self):
         data = json.loads(to_json(self.make_result()))
@@ -365,12 +366,30 @@ class ReporterAndCliTests(TempProject):
     def test_markdown_report_contains_name(self):
         self.assertIn("requests", to_markdown(self.make_result()))
 
+    def test_markdown_report_can_render_english(self):
+        report = to_markdown(self.make_result(), language="en")
+        self.assertIn("## Summary", report)
+        self.assertIn("Major upgrades often include breaking changes", report)
+        self.assertNotIn("摘要", report)
+
+    def test_json_report_can_translate_reasons(self):
+        data = json.loads(to_json(self.make_result(), language="en"))
+        self.assertIn("Dependency version changed", data["changes"][0]["reasons"])
+
     def test_junit_report_xmlish(self):
         self.assertIn("<testsuite", to_junit(self.make_result()))
+
+    def test_junit_report_can_translate_failure_reasons(self):
+        report = to_junit(self.make_result(), language="en")
+        self.assertIn("Major upgrades often include breaking changes", report)
 
     def test_render_rejects_bad_format(self):
         with self.assertRaises(ValueError):
             render(self.make_result(), "yaml")
+
+    def test_render_rejects_bad_language(self):
+        with self.assertRaises(ValueError):
+            render(self.make_result(), "markdown", language="fr")
 
     def test_diff_parse_before_after(self):
         before, after = parse_unified_diff(
@@ -410,6 +429,37 @@ class ReporterAndCliTests(TempProject):
         )
         self.assertEqual(proc.returncode, 0, proc.stderr)
         self.assertEqual(json.loads(proc.stdout)["summary"]["minor"], 1)
+
+    def test_cli_language_english(self):
+        before = self.root / "before"
+        after = self.root / "after"
+        before.mkdir()
+        after.mkdir()
+        (before / "requirements.txt").write_text("requests==2.30.0\n", encoding="utf-8")
+        (after / "requirements.txt").write_text("requests==3.0.0\n", encoding="utf-8")
+        proc = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "dependency_upgrade_impact",
+                "--before",
+                str(before),
+                "--after",
+                str(after),
+                "--language",
+                "en",
+                "--fail-on",
+                "none",
+            ],
+            cwd=ROOT,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            env={**os.environ, "PYTHONPATH": str(ROOT / "src")},
+        )
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertIn("## Summary", proc.stdout)
+        self.assertIn("Major upgrades often include breaking changes", proc.stdout)
 
     def test_cli_output_file(self):
         before = self.root / "before"

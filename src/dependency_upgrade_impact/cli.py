@@ -11,7 +11,7 @@ from . import __version__
 from .analyzer import analyze
 from .diff_input import cleanup_materialized, materialize_diff
 from .parsers import ParseError
-from .reporters import render
+from .reporters import SUPPORTED_LANGUAGES, render
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -30,6 +30,12 @@ def build_parser() -> argparse.ArgumentParser:
         choices=("markdown", "json", "junit"),
         default="markdown",
         help="报告格式，默认 markdown",
+    )
+    parser.add_argument(
+        "--language",
+        choices=SUPPORTED_LANGUAGES,
+        default="zh",
+        help="报告语言，默认 zh；可选 en",
     )
     parser.add_argument("--output", help="写入报告文件；默认输出到 stdout")
     parser.add_argument(
@@ -62,7 +68,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             fail_on=args.fail_on,
             min_score=args.min_score,
         )
-        output = render(result, args.format)
+        output = render(result, args.format, language=args.language)
         if args.output:
             Path(args.output).parent.mkdir(parents=True, exist_ok=True)
             Path(args.output).write_text(output, encoding="utf-8")

@@ -1,8 +1,45 @@
 # dependency-upgrade-impact
 
+[![CI](https://github.com/yanqr213/dependency-upgrade-impact/actions/workflows/ci.yml/badge.svg)](https://github.com/yanqr213/dependency-upgrade-impact/actions/workflows/ci.yml)
+![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue)
+![No runtime dependencies](https://img.shields.io/badge/runtime_dependencies-0-brightgreen)
+![License: MIT](https://img.shields.io/badge/license-MIT-green)
+
 dependency-upgrade-impact 是一个离线依赖升级影响分析工具，面向 DevTools、依赖治理、CI 和 AI coding agent 工作流。它比较升级前后的 `package-lock.json`、`package.json`、`requirements.txt`、`pyproject.toml` 或 unified diff，识别直接/间接依赖变化、SemVer 风险、许可/engine/安装脚本提示、受影响源码 import、建议测试范围，并输出 Markdown、JSON、JUnit 报告与 CI gate 退出码。
 
 项目只使用 Python 标准库，兼容 Python 3.9+，没有外部运行时依赖。
+
+## 30 秒价值
+
+当 Renovate、Dependabot 或 AI coding agent 提交依赖升级 PR 时，这个工具可以在不访问 npm/PyPI 的情况下回答三个问题：
+
+- 这次到底升级了哪些直接/间接依赖，风险高低如何？
+- 哪些源码文件真的 import/require 了这些依赖，应该优先看哪里？
+- CI 是否应该放行，还是因为 major 升级、安装脚本、engine 约束或许可变化而阻断？
+
+```bash
+PYTHONPATH=src python -m dependency_upgrade_impact \
+  --before examples/before \
+  --after examples/after \
+  --source-root examples/source \
+  --format markdown \
+  --language zh \
+  --fail-on none
+```
+
+真实样例会识别 8 个依赖变化、4 个 major 升级、2 个 high risk 项，并指出 `react`、`left-pad`、`fastapi`、`requests` 命中的源码文件。完整演示见 [docs/showcase.md](docs/showcase.md)。
+
+## 工作流
+
+```mermaid
+flowchart LR
+  A[Renovate / Dependabot / AI agent PR] --> B[before/after manifests or git diff]
+  B --> C[dependency-upgrade-impact]
+  C --> D[Markdown report for reviewers]
+  C --> E[JSON for agents and bots]
+  C --> F[JUnit for CI annotations]
+  C --> G[Exit code gate]
+```
 
 ## 适用场景
 
@@ -10,6 +47,7 @@ dependency-upgrade-impact 是一个离线依赖升级影响分析工具，面向
 - AI agent 编码辅助：agent 完成依赖升级后，用结构化 JSON 反查需要验证的源码与测试。
 - CI gate：major 升级、安装脚本、可疑许可、源码命中等风险达到阈值时阻断流水线。
 - 离线审计：不访问 npm、PyPI 或许可证服务，适合内网、私有仓库、无 token 环境。
+- 双语报告：默认中文，也可以通过 `--language en` 输出英文 Markdown/JSON/JUnit。
 
 ## 安装
 
@@ -64,6 +102,7 @@ dependency-upgrade-impact --diff examples/diff.patch --format junit --output rep
 - `--diff`：包含支持文件变更的 unified diff；与 `--before` 互斥。
 - `--source-root`：源码目录，用于扫描 Python/JS/TS import。
 - `--format`：`markdown`、`json`、`junit`。
+- `--language`：`zh`、`en`，默认 `zh`。
 - `--output`：报告文件路径；不传则输出到 stdout。
 - `--fail-on`：`none`、`low`、`medium`、`high`，默认 `high`。
 - `--min-score`：风险分达到该值时 CI gate 失败。
@@ -88,7 +127,7 @@ result = analyze(
 )
 
 print(result.summary.total_changes)
-print(render(result, "json"))
+print(render(result, "json", language="zh"))
 ```
 
 核心对象：
@@ -179,7 +218,7 @@ jobs:
 AI coding agent 升级依赖后可以执行：
 
 ```bash
-python -m dependency_upgrade_impact --before .agent/before --after . --source-root . --format json --fail-on none
+python -m dependency_upgrade_impact --before .agent/before --after . --source-root . --format json --language zh --fail-on none
 ```
 
 推荐 agent 使用 JSON 中的字段：
@@ -240,12 +279,45 @@ dependency-upgrade-impact is an offline dependency upgrade impact analyzer for D
 
 The project uses only the Python standard library, supports Python 3.9+, and has no runtime dependencies.
 
+## 30-Second Value
+
+When Renovate, Dependabot, or an AI coding agent opens a dependency upgrade PR, this tool answers three review questions without calling npm, PyPI, or any external service:
+
+- Which direct or transitive dependencies changed, and how risky are they?
+- Which source files actually import or require the changed packages?
+- Should CI pass, or should the PR stop because of a major upgrade, install script, engine constraint, or license signal?
+
+```bash
+PYTHONPATH=src python -m dependency_upgrade_impact \
+  --before examples/before \
+  --after examples/after \
+  --source-root examples/source \
+  --format markdown \
+  --language en \
+  --fail-on none
+```
+
+The bundled example finds 8 dependency changes, 4 major upgrades, 2 high-risk items, and affected files for `react`, `left-pad`, `fastapi`, and `requests`. See [docs/showcase.md](docs/showcase.md) for the full walkthrough.
+
+## Workflow
+
+```mermaid
+flowchart LR
+  A[Renovate / Dependabot / AI agent PR] --> B[before/after manifests or git diff]
+  B --> C[dependency-upgrade-impact]
+  C --> D[Markdown report for reviewers]
+  C --> E[JSON for agents and bots]
+  C --> F[JUnit for CI annotations]
+  C --> G[Exit code gate]
+```
+
 ## Use Cases
 
 - Dependency upgrade pull requests: explain what changed, how risky it is, and which tests should run.
 - AI coding agents: after an agent upgrades dependencies, provide structured JSON describing validation targets.
 - CI gates: fail builds when major upgrades, install scripts, suspicious licenses, or source usage reach a configured risk threshold.
 - Offline audits: no npm, PyPI, vulnerability feed, token, or network access is required.
+- Bilingual reports: Chinese by default, or English Markdown/JSON/JUnit with `--language en`.
 
 ## Installation
 
@@ -300,6 +372,7 @@ Options:
 - `--diff`: unified diff containing supported files; mutually exclusive with `--before`.
 - `--source-root`: source tree used for import scanning and test suggestions.
 - `--format`: `markdown`, `json`, or `junit`.
+- `--language`: `zh` or `en`; default is `zh`.
 - `--output`: write report to a file; stdout is used by default.
 - `--fail-on`: `none`, `low`, `medium`, or `high`; default is `high`.
 - `--min-score`: fail the CI gate when any change reaches this score.
@@ -324,7 +397,7 @@ result = analyze(
 )
 
 print(result.summary.total_changes)
-print(render(result, "json"))
+print(render(result, "json", language="en"))
 ```
 
 Main objects:
