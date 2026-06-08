@@ -1,0 +1,9 @@
+[project]
+name = "demo-python"
+version = "1.0.0"
+dependencies = [
+  "fastapi==0.95.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest==7.4.0"]

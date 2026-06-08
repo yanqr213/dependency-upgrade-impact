@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dependency-upgrade-impact"
+version = "0.1.0"
+description = "Offline dependency upgrade impact reports for CI and AI coding agents."
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "MIT"}
+authors = [{name = "dependency-upgrade-impact contributors"}]
+keywords = ["dependencies", "ci", "semver", "lockfile", "devtools"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Software Development :: Quality Assurance",
+]
+dependencies = []
+
+[project.scripts]
+dependency-upgrade-impact = "dependency_upgrade_impact.cli:main"
+dui = "dependency_upgrade_impact.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.dependency-upgrade-impact]
+fail-on = "high"
